@@ -63,6 +63,14 @@
         </div>
       </div>
 
+      <div class="card" id="trainingIntro">
+        <div>15-Minuten-Trainings: Vokabeln • Sätze übersetzen. Täglicher Test zum Abschluss.</div>
+        <div class="row" style="margin-top:10px">
+          <label class="badge">Gerätekompatibel</label>
+          <label class="badge">Offline-fähig (lokal)</label>
+        </div>
+      </div>
+
       <div class="grid two">
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-top:10px">
@@ -117,6 +125,10 @@
   <script>
   (function(){
     'use strict';
+    const legacyLogin = document.getElementById('login');
+    if(legacyLogin){ legacyLogin.remove(); }
+    const appEl = document.getElementById('app');
+    if(appEl){ appEl.classList.remove('hidden'); }
   const startBtn = document.getElementById('startTraining');
   const onlineLink = document.getElementById('onlineLink');
     const stageEl = document.getElementById('stage');
