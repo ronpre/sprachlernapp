@@ -22,6 +22,7 @@
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#222a35;color:var(--muted);font-size:.75rem;letter-spacing:.04em}
     .good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--warn)}
     .hidden{display:none!important}
+    #login{display:none!important}
     .timer{font-variant-numeric:tabular-nums}
     .card{background:#121722;border:1px solid var(--grid);border-radius:12px;padding:12px}
     .list{display:flex;flex-wrap:wrap;gap:8px}
@@ -125,8 +126,8 @@
   <script>
   (function(){
     'use strict';
-    const legacyLogin = document.getElementById('login');
-    if(legacyLogin){ legacyLogin.remove(); }
+    const legacyLogins = document.querySelectorAll('#login');
+    if(legacyLogins.length){ legacyLogins.forEach(el=>el.remove()); }
     const appEl = document.getElementById('app');
     if(appEl){ appEl.classList.remove('hidden'); }
   const startBtn = document.getElementById('startTraining');
