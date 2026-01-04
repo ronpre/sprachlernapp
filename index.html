@@ -1,0 +1,1477 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lernapp – Englisch & Französisch</title>
+  <meta name="description" content="15-Minuten-Trainings mit Vokabeln und Sätze übersetzen – EN/DE/FR" />
+  <link rel="icon" href="data:," />
+  <style>
+    :root{--bg:#0f1115;--panel:#171b22;--ink:#e8ecef;--muted:#9aa3ad;--grid:#2a3242;--acc:#8aa0b7;--green:#6fbf8b;--red:#b86868;--warn:#d7a657}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:linear-gradient(180deg,var(--bg),#0c0e12);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .panel{background:var(--panel);border:1px solid var(--grid);border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.35);padding:16px}
+    h1{margin:.2em 0 .6em;font-weight:650;letter-spacing:.2px}
+  label{color:var(--muted)} input:not([type="checkbox"]):not([type="radio"]),select,button,textarea{background:#121722;color:var(--ink);border:1px solid var(--grid);border-radius:10px;padding:10px}
+    button{cursor:pointer;transition:.12s transform ease} button:hover{transform:translateY(-1px);border-color:var(--acc)}
+    .grid{display:grid;gap:14px}
+    .two{grid-template-columns:1fr 1fr}
+    .three{grid-template-columns:repeat(3,1fr)}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#222a35;color:var(--muted);font-size:.75rem;letter-spacing:.04em}
+    .good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--warn)}
+    .hidden{display:none!important}
+    .timer{font-variant-numeric:tabular-nums}
+    .card{background:#121722;border:1px solid var(--grid);border-radius:12px;padding:12px}
+    .list{display:flex;flex-wrap:wrap;gap:8px}
+    .pill{background:#222a35;padding:6px 10px;border-radius:999px}
+  /* Smaller controls for Modus area (match Satz-Komplexität sizing) */
+  #modeList{gap:6px!important}
+  #modeList .pill{padding:2px 6px;font-size:.85rem}
+  #modeList input[type="checkbox"]{appearance:auto;-webkit-appearance:auto;width:16px;height:16px;padding:0;margin-right:6px}
+  /* Smaller controls for Satz-Komplexität */
+  #simplicityRow{gap:6px!important}
+  #simplicityRow .pill{padding:2px 6px;font-size:.85rem}
+  #simplicityRow input[type="number"]{padding:4px 6px;font-size:.85rem;width:56px!important;text-align:right;line-height:1.1}
+  #simplicityRow > .muted{background:#222a35;padding:2px 8px;border-radius:999px;font-size:.85rem}
+  #simplicityRow .pill-group{display:flex;gap:6px;flex-wrap:nowrap}
+  @media (max-width: 540px){ #simplicityRow .pill-group{flex-wrap:wrap} }
+    .footer{margin:18px auto;color:var(--muted)}
+    .task{margin:10px 0}
+    .q{font-weight:600}
+    .speak{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:1px solid var(--grid)}
+    .result{white-space:pre-wrap;background:#0e131c;border:1px dashed var(--grid);padding:10px;border-radius:10px}
+    @media (max-width: 960px){.two,.three{grid-template-columns:1fr}}
+    /* Print styles for PDF export of errors */
+    @media print{
+      body{background:#fff;color:#000}
+      body *{visibility:hidden}
+      #printArea, #printArea *{visibility:visible}
+      #printArea{position:absolute;left:0;top:0;width:100%;padding:0;margin:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="app" class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h1>de --> en --> fr <span class="badge" id="trainDate"></span></h1>
+        <div class="row" style="gap:8px">
+          <a id="onlineLink" class="badge" href="https://ronpre.github.io/tictactoe/" target="_blank" rel="noopener">Online-Version öffnen</a>
+          <button id="startTraining">Training starten</button>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-top:10px">
+            <div class="muted">Schwierigkeit</div>
+            <select id="difficulty">
+              <option value="beginner">Anfänger</option>
+              <option value="intermediate">Fortgeschritten</option>
+              <option value="native">Muttersprache</option>
+            </select>
+          </div>
+          <div class="row" style="justify-content:space-between;margin-top:10px">
+            <div class="muted">Modus</div>
+            <div class="list" id="modeList">
+              <label class="pill"><input type="checkbox" id="mVocab" checked /> Vokabeln</label>
+              <label class="pill"><input type="checkbox" id="mTranslate" checked /> Sätze übersetzen</label>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="muted" id="simplicityTitle" style="margin-top:8px">Satz-Komplexität</div>
+          <div class="row" id="simplicityRow" style="margin-top:6px; gap:8px; flex-wrap:wrap">
+            <label class="pill">Wörter min <input id="cfgMinWords" type="number" min="1" max="30" style="width:70px"></label>
+            <label class="pill">Wörter max <input id="cfgMaxWords" type="number" min="5" max="30" style="width:70px"></label>
+            <div class="pill-group">
+              <label class="pill">Zeichen min <input id="cfgMinChars" type="number" min="10" max="300" style="width:80px"></label>
+              <label class="pill">Zeichen max <input id="cfgMaxChars" type="number" min="40" max="300" style="width:80px"></label>
+            </div>
+            <button id="cfgReset" class="badge">Standard</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="stage" class="card"></div>
+
+      <div class="card">
+        <h3>Abschlusstest</h3>
+  <div class="muted">Startet automatisch nach den Übungen.</div>
+        <div id="testStage" class="task"></div>
+        <div id="testResult" class="result hidden"></div>
+        <div class="row" style="margin-top:10px; gap:8px">
+          <button id="exportPdfBtn" class="hidden">Fehler als PDF exportieren</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer muted">Speicherung lokal (Fortschritt, Einstellungen). Für Online-Nutzung via GitHub Pages hosten.</div>
+  </div>
+
+  <!-- Hidden print container -->
+  <div id="printArea" class="hidden"></div>
+
+  <script>
+  (function(){
+    'use strict';
+  const startBtn = document.getElementById('startTraining');
+  const onlineLink = document.getElementById('onlineLink');
+    const stageEl = document.getElementById('stage');
+    const testStageEl = document.getElementById('testStage');
+    const testResultEl = document.getElementById('testResult');
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    const printAreaEl = document.getElementById('printArea');
+    const trainDateEl = document.getElementById('trainDate');
+    const progressEl = document.getElementById('progress');
+
+  // Sprache ist fest: Deutsch → Englisch & Französisch
+  const difficultyEl = document.getElementById('difficulty');
+  const mVocabEl = document.getElementById('mVocab');
+  const mTranslateEl = document.getElementById('mTranslate');
+  const cfgMinWordsEl = document.getElementById('cfgMinWords');
+  const cfgMaxWordsEl = document.getElementById('cfgMaxWords');
+  const cfgMinCharsEl = document.getElementById('cfgMinChars');
+  const cfgMaxCharsEl = document.getElementById('cfgMaxChars');
+    const cfgResetEl = document.getElementById('cfgReset');
+
+    // State
+  let started=false, modulesDone=0, testReady=false;
+  // Track items used in exercises to avoid reusing them in the test
+  let sessionVocabAsked = [];
+  let sessionSentencesAsked = [];
+  // Collect session errors for PDF export
+  let sessionErrors = []; // elements: {type:'vocab'|'sent', src:string, langs: [{tgt:'en'|'fr', correct:string}]}
+  // also expose globally for the export module
+  try{ window.sessionErrors = sessionErrors; }catch{}
+  // also expose globally for the export module
+  try{ window.sessionErrors = sessionErrors; }catch{}
+
+    // Seeded RNG per Tag & Schwierigkeit & Sprachpaar, reproduzierbar
+    const todayKey = new Date().toISOString().slice(0,10);
+    trainDateEl.textContent = todayKey;
+    function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296}}
+    function strHash(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+    let rand = Math.random; // will be re-seeded on start
+
+    // Attempt counter per day/pair/diff to vary seed across multiple runs in one day
+    function attemptKey(day,pair,diff){ return `lernapp-attempt|${day}|${pair}|${diff}`; }
+    function nextAttempt(day,pair,diff){
+      const k = attemptKey(day,pair,diff);
+      const n = parseInt(localStorage.getItem(k)||'0',10) + 1;
+      localStorage.setItem(k, String(n));
+      return n;
+    }
+
+    // Persistently track used vocab/sentences per day/pair/diff
+    function usedStoreKey(type, day, pair, diff){ return `lernapp-used-v1|${type}|${day}|${pair}|${diff}`; }
+    function getUsedList(type, day, pair, diff){
+      try{ return JSON.parse(localStorage.getItem(usedStoreKey(type,day,pair,diff))||'[]'); }catch{ return []; }
+    }
+    function addUsedList(type, day, pair, diff, arr){
+      const key = usedStoreKey(type,day,pair,diff);
+      const prev = new Set(getUsedList(type,day,pair,diff));
+      for(const x of (arr||[])) prev.add(x);
+      try{ localStorage.setItem(key, JSON.stringify(Array.from(prev).slice(-500))); }catch{}
+    }
+
+    // Cross-session review/mastered tracking
+    const LS_KEYS = {
+      reviewVocab: 'lernapp-review-vocab-v1',
+      masteredVocab: 'lernapp-mastered-vocab-v1',
+      reviewSent: 'lernapp-review-sent-v1',
+      masteredSent: 'lernapp-mastered-sent-v1',
+      historyVocab: 'lernapp-history-vocab-v1',
+      historySent: 'lernapp-history-sent-v1'
+    };
+    function getSetLS(key){ try{ return new Set(JSON.parse(localStorage.getItem(key)||'[]')); }catch{ return new Set(); } }
+    function saveSetLS(key, set){ try{ localStorage.setItem(key, JSON.stringify(Array.from(set).slice(-2000))); }catch{} }
+    function addToHistory(key, arr){
+      const s = getSetLS(key);
+      for(const x of (arr||[])) s.add(x);
+      saveSetLS(key, s);
+    }
+
+    // Difficulty config
+  // Fixed exercise counts per requirement
+  const VOCAB_EX_COUNT = 15;
+  const SENT_EX_COUNT = 7;
+  const DIFFS = {
+      beginner: {
+    vocabCount: VOCAB_EX_COUNT,
+    sentCount: SENT_EX_COUNT,
+        testVocab: 5,
+        thresholds:{ ok:0.70, good:0.85 },
+        sentSimple:{ minWords:1, maxWords:10, minChars:1, maxChars:90 }
+      },
+      intermediate: {
+    vocabCount: VOCAB_EX_COUNT,
+    sentCount: SENT_EX_COUNT,
+        testVocab: 8,
+        thresholds:{ ok:0.75, good:0.90 },
+        sentSimple:{ minWords:3, maxWords:16, minChars:20, maxChars:150 }
+      },
+      native: {
+    vocabCount: VOCAB_EX_COUNT,
+    sentCount: SENT_EX_COUNT,
+        testVocab: 10,
+        thresholds:{ ok:0.85, good:0.95 },
+        sentSimple:{ minWords:6, maxWords:22, minChars:30, maxChars:220 }
+      }
+    };
+
+    // Wortschatz-Kerne (mini, exemplarisch; erweiterbar)
+    const base = {
+      'en': [
+        'house','river','computer','friend','city','book','weather','family','journey','health','music','language','school','work','time','food','car','child','world','story',
+        'table','chair','window','door','street','train','bus','bike','phone','garden','kitchen','bathroom','bedroom','coffee','tea','water','bread','butter','cheese','egg',
+        'market','shop','bank','hospital','hotel','station','airport','ticket','teacher','student','doctor','nurse','engineer','artist','driver','player','game','movie','song',
+        'summer','winter','spring','autumn','morning','evening','night','day','week','month','year','money','price','number','color','blue','red','green','black','white'
+      ],
+      'de': [
+        'Haus','Fluss','Computer','Freund','Stadt','Buch','Wetter','Familie','Reise','Gesundheit','Musik','Sprache','Schule','Arbeit','Zeit','Essen','Auto','Kind','Welt','Geschichte',
+        'Tisch','Stuhl','Fenster','Tür','Straße','Zug','Bus','Fahrrad','Handy','Garten','Küche','Bad','Schlafzimmer','Kaffee','Tee','Wasser','Brot','Butter','Käse','Ei',
+        'Markt','Laden','Bank','Krankenhaus','Hotel','Bahnhof','Flughafen','Ticket','Lehrer','Schüler','Arzt','Pflegekraft','Ingenieur','Künstler','Fahrer','Spieler','Spiel','Film','Lied',
+        'Sommer','Winter','Frühling','Herbst','Morgen','Abend','Nacht','Tag','Woche','Monat','Jahr','Geld','Preis','Nummer','Farbe','Blau','Rot','Grün','Schwarz','Weiß'
+      ],
+      'fr': [
+        'maison','rivière','ordinateur','ami','ville','livre','météo','famille','voyage','santé','musique','langue','école','travail','temps','nourriture','voiture','enfant','monde','histoire',
+        'table','chaise','fenêtre','porte','rue','train','bus','vélo','téléphone','jardin','cuisine','salle de bain','chambre','café','thé','eau','pain','beurre','fromage','œuf',
+        'marché','magasin','banque','hôpital','hôtel','gare','aéroport','billet','professeur','élève','médecin','infirmier','ingénieur','artiste','chauffeur','joueur','jeu','film','chanson',
+        'été','hiver','printemps','automne','matin','soir','nuit','jour','semaine','mois','année','argent','prix','numéro','couleur','bleu','rouge','vert','noir','blanc'
+      ]
+    };
+
+    // Primitive BEIDSEITIGE Übersetzungen (Demo; real: Wörterbuch/API)
+    const dict = {
+      'house':{de:'Haus',fr:'maison'}, 'river':{de:'Fluss',fr:'rivière'}, 'computer':{de:'Computer',fr:'ordinateur'}, 'friend':{de:'Freund',fr:'ami'}, 'city':{de:'Stadt',fr:'ville'}, 'book':{de:'Buch',fr:'livre'}, 'weather':{de:'Wetter',fr:'météo'}, 'family':{de:'Familie',fr:'famille'}, 'journey':{de:'Reise',fr:'voyage'}, 'health':{de:'Gesundheit',fr:'santé'}, 'music':{de:'Musik',fr:'musique'}, 'language':{de:'Sprache',fr:'langue'}, 'school':{de:'Schule',fr:'école'}, 'work':{de:'Arbeit',fr:'travail'}, 'time':{de:'Zeit',fr:'temps'}, 'food':{de:'Essen',fr:'nourriture'}, 'car':{de:'Auto',fr:'voiture'}, 'child':{de:'Kind',fr:'enfant'}, 'world':{de:'Welt',fr:'monde'}, 'story':{de:'Geschichte',fr:'histoire'}
+    };
+
+    function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rand()* (i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+    function pick(list,n){const a=list.slice();shuffle(a);return a.slice(0,n)}
+
+    // Wort-Tiers (Deutsch): sehr einfach → fortgeschritten → anspruchsvoll
+    const simpleDE = [
+      'Haus','Freund','Stadt','Buch','Wetter','Familie','Schule','Arbeit','Zeit','Essen','Auto','Kind','Welt','Tisch','Stuhl','Fenster','Tür','Straße','Zug','Bus','Fahrrad','Handy','Garten','Küche','Bad','Schlafzimmer','Kaffee','Tee','Wasser','Brot','Butter','Käse','Ei','Film','Lied','Morgen','Abend','Nacht','Tag','Woche','Monat','Jahr','Geld','Preis','Nummer','Farbe','Blau','Rot','Grün','Schwarz','Weiß'
+    ];
+    const advancedDE = [
+      'Computer','Reise','Gesundheit','Musik','Sprache','Geschichte','Markt','Laden','Bank','Krankenhaus','Hotel','Bahnhof','Flughafen','Ticket','Lehrer','Schüler','Arzt','Pflegekraft','Ingenieur','Künstler','Fahrer','Spieler','Spiel','Sommer','Winter','Frühling','Herbst'
+    ];
+    const challengingDE = [
+      'Fenster','Schlafzimmer','Krankenhaus','Flughafen','Station','Bahnhof','Nummer','Frühling','Schwarz','Weiß','Gesundheit','Ingenieur','Pflegekraft'
+    ];
+    function uniqueConcat(...lists){ const s=new Set(); const out=[]; for(const lst of lists){ for(const w of lst){ if(!s.has(w)){ s.add(w); out.push(w); } } } return out; }
+    function getWordPoolForDiff(lang, diff){
+      const baseWords = (base[lang]||[]).slice();
+      if(lang!=='de'){
+        // Heuristic by length for non-DE fallback
+        if(diff==='beginner') return baseWords.sort((a,b)=>a.length-b.length);
+        if(diff==='native') return baseWords.sort((a,b)=>b.length-a.length);
+        return baseWords;
+      }
+      if(diff==='beginner'){
+        // prioritize simple words, then fill with short ones
+        const short = baseWords.filter(w=>w.length<=6 && !simpleDE.includes(w));
+        return uniqueConcat(simpleDE, short, baseWords);
+      } else if(diff==='intermediate'){
+        // mix simple + advanced
+        const rest = baseWords.filter(w=>!simpleDE.includes(w) && !advancedDE.includes(w));
+        return uniqueConcat(advancedDE, simpleDE, rest);
+      } else { // native
+        // prefer challenging/longer/abstract words first
+        const long = baseWords.filter(w=>w.length>=8 && !challengingDE.includes(w));
+        const rest = baseWords.filter(w=>!challengingDE.includes(w) && !long.includes(w));
+        return uniqueConcat(challengingDE, long, rest, simpleDE);
+      }
+    }
+
+    // Generatoren
+    async function genVocab(pair, count){
+      const [a,b]=pair.split('-'); // en-de
+      let src = base[a]||[], res=[];
+      const sample = pick(src, count||8);
+      for(const w of sample){
+        let ans = await translateText(w, a, b);
+        if(!ans){
+          if(a==='en'&&b==='de') ans = dict[w]?.de;
+          else if(a==='en'&&b==='fr') ans = dict[w]?.fr;
+          else if(a==='de'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = k; }
+          else if(a==='fr'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = k; }
+          else if(a==='fr'&&b==='de'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = dict[k].de; }
+          else if(a==='de'&&b==='fr'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = dict[k].fr; }
+        }
+        if(ans) res.push({q:w, a: ans});
+      }
+      return res;
+    }
+
+    // Fresh vocab translation with dictionary fallback (for any a-b pair)
+    async function translateWordWithFallback(a, b, w){
+      let ans = await translateText(w, a, b);
+      if(!ans){
+        if(a==='en'&&b==='de') ans = dict[w]?.de;
+        else if(a==='en'&&b==='fr') ans = dict[w]?.fr;
+        else if(a==='de'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = k; }
+        else if(a==='fr'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = k; }
+        else if(a==='fr'&&b==='de'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = dict[k].de; }
+        else if(a==='de'&&b==='fr'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = dict[k].fr; }
+      }
+      // Return null if not translatable to avoid showing source in “richtig”
+      return ans||null;
+    }
+
+    // Build dict-backed candidate pairs for a->b without network
+    function dictCandidatesForPair(a,b){
+      const out = [];
+      const entries = Object.entries(dict);
+      if(a==='de' && b==='en'){
+        for(const [en, m] of entries){ if(m.de) out.push({q: m.de, a: en}); }
+      } else if(a==='de' && b==='fr'){
+        for(const [en, m] of entries){ if(m.de && m.fr) out.push({q: m.de, a: m.fr}); }
+      } else if(a==='en' && b==='de'){
+        for(const [en, m] of entries){ if(m.de) out.push({q: en, a: m.de}); }
+      } else if(a==='en' && b==='fr'){
+        for(const [en, m] of entries){ if(m.fr) out.push({q: en, a: m.fr}); }
+      } else if(a==='fr' && b==='de'){
+        for(const [en, m] of entries){ if(m.fr && m.de) out.push({q: m.fr, a: m.de}); }
+      } else if(a==='fr' && b==='en'){
+        for(const [en, m] of entries){ if(m.fr) out.push({q: m.fr, a: en}); }
+      }
+      return out;
+    }
+
+    // Strict generator to ensure we get translatable words in target language
+    async function genVocabStrict(pair, count, usedSet, diff){
+      const [a,b] = pair.split('-');
+      const all = getWordPoolForDiff(a, diff||'beginner');
+      shuffle(all);
+      const out = [];
+      for(const w of all){
+        if(out.length>=count) break;
+        if(usedSet && usedSet.has(w)) continue;
+        const t = await translateWordWithFallback(a, b, w);
+        // require that translation exists and is likely in target language
+        const det = await detectLang(t);
+        const langOk = det? det===b : true;
+        if(t && langOk && normalizeText(t)!==normalizeText(w)){
+          out.push({q:w, a:t});
+        }
+      }
+      return out;
+    }
+
+  async function genSentence(pair, difficulty){
+      const [a,b]=pair.split('-');
+      const subjects = {en:['I','You','We','They','He','She'], de:['Ich','Du','Wir','Sie','Er','Sie'], fr:['Je','Tu','Nous','Ils','Il','Elle']};
+      const verbs = {en:['see','have','like','need','read','write'], de:['sehe','habe','mag','brauche','lese','schreibe'], fr:['vois','ai','aime','besoin de','lis','écris']};
+      const objs = {en:base.en, de:base.de, fr:base.fr};
+      const si = Math.floor(rand()*subjects[a].length);
+      const vi = Math.floor(rand()*verbs[a].length);
+      const oi = Math.floor(rand()*objs[a].length);
+      let src = `${subjects[a][si]} ${verbs[a][vi]} ${objs[a][oi]}.`;
+      // erhöhe Komplexität ab fortgeschritten: 2. Objekt via Konjunktion
+      if(difficulty==='intermediate' || difficulty==='native'){
+        const oi2 = Math.floor(rand()*objs[a].length);
+        const conj = a==='en'? 'and' : a==='fr'? 'et' : 'und';
+        src = `${subjects[a][si]} ${verbs[a][vi]} ${objs[a][oi]} ${conj} ${objs[a][oi2]}.`;
+      }
+  // echte Übersetzung via Provider (Fallback: Identität)
+  let trans = await translateText(src, a, b);
+  if(!trans){ trans = src; }
+  return {src, trans};
+    }
+
+    function genReading(pair, wordsCount){
+      // mini-Lesetext basierend auf Zufallswörtern
+      const a = pair.split('-')[0];
+      const words = pick(base[a], wordsCount||6);
+      const sentence = words.join(', ') + '.';
+      const title = a==='en'?'Short Reading':'Lecture courte';
+      return {title, text: sentence};
+    }
+
+    function htmlEscape(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+
+    // --- Speech utils (STT + Scoring) ---
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    function normalizeText(t){
+      return String(t||'')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove diacritics
+        .replace(/[^a-z0-9äöüßéèàç'\s]/gi,' ') // keep common letters (rough)
+        .replace(/\s+/g,' ').trim();
+    }
+    function levenshtein(a,b){
+      a=normalizeText(a); b=normalizeText(b);
+      const m=a.length,n=b.length; if(m===0) return n; if(n===0) return m;
+      const dp=new Array(n+1); for(let j=0;j<=n;j++) dp[j]=j;
+      for(let i=1;i<=m;i++){
+        let prev=dp[0]; dp[0]=i;
+        for(let j=1;j<=n;j++){
+          const tmp=dp[j];
+          const cost=a[i-1]===b[j-1]?0:1;
+          dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost);
+          prev=tmp;
+        }
+      }
+      return dp[n];
+    }
+    function tokenF1(a,b){
+      const A=normalizeText(a).split(' ').filter(Boolean);
+      const B=normalizeText(b).split(' ').filter(Boolean);
+      if(!A.length||!B.length) return 0;
+      const setB=new Map(); B.forEach(x=>setB.set(x,(setB.get(x)||0)+1));
+      let match=0; for(const t of A){ if(setB.get(t)>0){ match++; setB.set(t,setB.get(t)-1);} }
+      const prec=match/A.length, rec=match/B.length; if(prec+rec===0) return 0; return 2*prec*rec/(prec+rec);
+    }
+    function speechSimilarity(ref,hyp){
+      const d=levenshtein(ref,hyp); const maxLen=Math.max(normalizeText(ref).length,1);
+      const charSim=1 - Math.min(1,d/Math.max(maxLen,1));
+      const f1=tokenF1(ref,hyp);
+      return 0.6*charSim + 0.4*f1;
+    }
+
+    // Tolerantere Satz-Normalisierung + Ähnlichkeitsmetrik für Übersetzungen
+    function normalizeSentence(t){
+      return String(t||'')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[“”«»„‟]/g,'"')
+        .replace(/[’‚‛']/g,"'")
+        .replace(/[–—−]/g,'-')
+        .replace(/[^a-z0-9\s\-']/gi,' ')
+        .replace(/\s+/g,' ')
+        .trim();
+    }
+    function levenshteinRaw(a,b){
+      const m=a.length,n=b.length; if(m===0) return n; if(n===0) return m;
+      const dp=new Array(n+1); for(let j=0;j<=n;j++) dp[j]=j;
+      for(let i=1;i<=m;i++){
+        let prev=dp[0]; dp[0]=i;
+        for(let j=1;j<=n;j++){
+          const tmp=dp[j];
+          const cost=a[i-1]===b[j-1]?0:1;
+          dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost);
+          prev=tmp;
+        }
+      }
+      return dp[n];
+    }
+    function tokenF1Raw(a,b){
+      const A=a.split(' ').filter(Boolean);
+      const B=b.split(' ').filter(Boolean);
+      if(!A.length||!B.length) return 0;
+      const setB=new Map(); B.forEach(x=>setB.set(x,(setB.get(x)||0)+1));
+      let match=0; for(const t of A){ if(setB.get(t)>0){ match++; setB.set(t,setB.get(t)-1);} }
+      const prec=match/A.length, rec=match/B.length; if(prec+rec===0) return 0; return 2*prec*rec/(prec+rec);
+    }
+    function sentenceSimilarity(ref,hyp){
+      const R = normalizeSentence(ref);
+      const H = normalizeSentence(hyp);
+      const d = levenshteinRaw(R,H); const maxLen=Math.max(R.length,1);
+      const charSim = 1 - Math.min(1, d/Math.max(maxLen,1));
+      const f1 = tokenF1Raw(R,H);
+      return 0.5*charSim + 0.5*f1;
+    }
+
+    // --- Translation provider (real dictionary/MT) ---
+    const TRANSLATE = {
+      baseUrl: 'https://libretranslate.com', // you can switch to your own instance
+      endpoint: '/translate',
+      enabled: true,
+      cacheKey: 'lernapp-translate-cache-v1'
+    };
+    function langCode(l){ return (l==='en'||l==='de'||l==='fr')? l : 'en'; }
+    function getTCache(){ try{ return JSON.parse(localStorage.getItem(TRANSLATE.cacheKey)||'{}'); }catch{ return {}; } }
+    function setTCache(c){ localStorage.setItem(TRANSLATE.cacheKey, JSON.stringify(c)); }
+    async function translateText(q, src, tgt){
+      if(!TRANSLATE.enabled) return null;
+      const key = `${src}|${tgt}|${q}`.toLowerCase();
+      const cache = getTCache();
+      if(cache[key]) return cache[key];
+      try{
+        const res = await fetch(`${TRANSLATE.baseUrl}${TRANSLATE.endpoint}` ,{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ q, source: langCode(src), target: langCode(tgt), format:'text' })
+        });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        const out = data?.translatedText || null;
+        if(out){ cache[key]=out; setTCache(cache); }
+        return out;
+      }catch(e){ return null; }
+    }
+
+    // Helper: translate any source to English with dictionary fallback
+    async function translateToEnglish(text, src){
+      if(src==='en') return text;
+      let out = await translateText(text, src, 'en');
+      if(out) return out;
+      // dictionary fallback for single words
+      if(src==='de'){ const k=Object.keys(dict).find(k=>dict[k].de===text); if(k) return k; }
+      if(src==='fr'){ const k=Object.keys(dict).find(k=>dict[k].fr===text); if(k) return k; }
+      return text;
+    }
+
+    // Simple language detection to verify target language of reference translations
+    function detectLangHeuristic(text){
+      const t = String(text||'').toLowerCase();
+      if(!t) return null;
+      // quick French markers (diacritics + common words)
+      if(/[éèêëàâîïôöûüçœ]/.test(t) || /(\bc'est\b|\bça\b|\ble\b|\bla\b|\bles\b|\bdes\b|\bune\b|\bun\b|\bje\b|\btu\b|\bil\b|\bnous\b|\bvous\b)/.test(t)) return 'fr';
+      // quick English markers
+      if(/\b(the|and|is|are|you|we|i|it|this|that|please|thanks)\b/.test(t)) return 'en';
+      return null;
+    }
+    async function detectLang(text){
+      const h = detectLangHeuristic(text);
+      if(h) return h;
+      if(!TRANSLATE.enabled) return null;
+      try{
+        const res = await fetch(`${TRANSLATE.baseUrl}/detect`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ q: text }) });
+        if(res.ok){ const arr = await res.json(); const top = Array.isArray(arr)? arr[0] : (arr?.[0]); const lang = top?.language || top?.lang; if(lang) return lang; }
+      }catch{}
+      return null;
+    }
+
+    // --- Web-Satzquelle (Wikipedia) ---
+    const SENTENCES = { cachePrefix: 'lernapp-sentences-v1' };
+    function getSCacheKey(lang){ const d=new Date().toISOString().slice(0,10); return `${SENTENCES.cachePrefix}|${lang}|${d}`; }
+    function getSCache(lang){ try{ return JSON.parse(localStorage.getItem(getSCacheKey(lang))||'[]'); }catch{ return []; } }
+    function setSCache(lang, arr){ try{ localStorage.setItem(getSCacheKey(lang), JSON.stringify(arr||[])); }catch{} }
+    function splitSentences(text){
+      if(!text) return [];
+      const raw = String(text).replace(/\s+/g,' ').trim();
+      const parts = raw.split(/(?<=[.!?])\s+/g);
+      return parts
+        .map(s=>s.replace(/^\d+\s*[–-]\s*/,'').trim())
+        .filter(s=>{
+          const w = s.split(/\s+/).length;
+          const lenOK = w>=5 && w<=18 && s.length>=25 && s.length<=160;
+          const bad = /\|\||\{\{|\}\}|\[[^\]]*\]|\([^)]{60,}\)/.test(s);
+          return lenOK && !bad;
+        });
+    }
+    function getSimplicityOverrides(diff){
+      try{ return JSON.parse(localStorage.getItem(`lernapp-sentSimple|${diff}`)||'null'); }catch{return null}
+    }
+    function setSimplicityOverrides(diff, cfg){
+      try{ if(cfg) localStorage.setItem(`lernapp-sentSimple|${diff}`, JSON.stringify(cfg)); else localStorage.removeItem(`lernapp-sentSimple|${diff}`); }catch{}
+    }
+    function effectiveSimpleCfg(diff){
+      const base = (DIFFS[diff]?.sentSimple)||{ minWords:3, maxWords:14, minChars:15, maxChars:140 };
+      const ov = getSimplicityOverrides(diff);
+      if(!ov) return base;
+      const cfg = {
+        minWords: Number.isFinite(ov.minWords)? ov.minWords : (base.minWords||1),
+        maxWords: Number.isFinite(ov.maxWords)? ov.maxWords : (base.maxWords||14),
+        minChars: Number.isFinite(ov.minChars)? ov.minChars : (base.minChars||1),
+        maxChars: Number.isFinite(ov.maxChars)? ov.maxChars : (base.maxChars||140)
+      };
+      // sanity clamps
+      if(cfg.minWords > cfg.maxWords) cfg.minWords = cfg.maxWords;
+      if(cfg.minChars > cfg.maxChars) cfg.minChars = cfg.maxChars;
+      if(cfg.minWords < 1) cfg.minWords = 1;
+      if(cfg.minChars < 1) cfg.minChars = 1;
+      return cfg;
+    }
+    function isSimpleSentence(s, diff){
+      if(!s) return false; const cfg = effectiveSimpleCfg(diff);
+      const w = s.trim().split(/\s+/).filter(Boolean).length;
+      const simplePunct = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9\s,'’\-–—\.!\?:;]+$/.test(s);
+      const semicol = (s.match(/;/g)||[]).length;
+      const paren = (s.match(/[()]/g)||[]).length;
+      return (
+        w >= (cfg.minWords||0) && w <= (cfg.maxWords||Infinity) &&
+        s.length >= (cfg.minChars||0) && s.length <= (cfg.maxChars||Infinity) &&
+        simplePunct && semicol===0 && paren===0
+      );
+    }
+    async function fetchWikiExtract(lang){
+      try{
+        const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/random/summary`);
+        if(r.ok){ const j=await r.json(); return j?.extract || ''; }
+      }catch{}
+      try{
+        const u = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&generator=random&grnnamespace=0&prop=extracts&explaintext=1&grnlimit=1&origin=*`;
+        const r = await fetch(u);
+        if(r.ok){ const j=await r.json(); const pages=j?.query?.pages||{}; const first = pages[Object.keys(pages)[0]]; return first?.extract || ''; }
+      }catch{}
+      return '';
+    }
+    async function getWebSentences(lang, minCount=50){
+      let list = getSCache(lang);
+      if(list.length>=minCount) return list;
+      const acc = list.slice();
+      let attempts=0;
+      while(acc.length<minCount && attempts<15){
+        attempts++;
+        const extract = await fetchWikiExtract(lang);
+        const parts = splitSentences(extract);
+        for(const s of parts){ if(!acc.includes(s)) acc.push(s); if(acc.length>=minCount) break; }
+      }
+      setSCache(lang, acc.slice(0,120));
+      return acc;
+    }
+    // --- Colloquial sentence generator (short, everyday speech) ---
+  const colloquialLex = {
+      en: {
+        nouns: ['coffee','pizza','music','sports','news','my phone','my car','work','school','the movie'],
+        placesAt: ['home','work','school','the park','the store','the station'],
+        placesGo: ['the park','the store','the station','the cinema','the cafe','the gym'],
+        acts: ['eat','go','meet','call','wait','study','walk'],
+        times: ['now','later','today','tonight','tomorrow'],
+        adj: ['late','early','fine','okay','busy','cold','hot']
+      },
+      de: {
+        nouns: ['Kaffee','Pizza','Musik','Sport','Nachrichten','mein Handy','mein Auto','die Arbeit','die Schule','der Film'],
+        placesAt: ['zu Hause','in der Arbeit','in der Schule','im Park','im Laden','am Bahnhof'],
+        placesGo: ['in den Park','in den Laden','zum Bahnhof','ins Kino','ins Café','ins Fitnessstudio'],
+        acts: ['essen','gehen','treffen','anrufen','warten','lernen','spazieren'],
+        times: ['jetzt','später','heute','heute Abend','morgen'],
+        adj: ['spät','früh','okay','busy','kalt','heiß']
+      },
+      fr: {
+        nouns: ['café','pizza','musique','sport','nouvelles','mon téléphone','ma voiture','le travail','l’école','le film'],
+        placesAt: ['à la maison','au travail','à l’école','au parc','au magasin','à la gare'],
+        placesGo: ['au parc','au magasin','à la gare','au cinéma','au café','à la salle de sport'],
+        acts: ['manger','aller','se voir','appeler','attendre','étudier','marcher'],
+        times: ['maintenant','plus tard','aujourd’hui','ce soir','demain'],
+        adj: ['tard','tôt','ok','occupé','froid','chaud']
+      }
+    };
+    const colloquialTemplates = {
+      en: {
+        greetings: [
+        'Hi!', 'Good morning.', 'Good evening.', 'Thanks a lot.', 'No problem.',
+        ],
+        smalltalk: [
+          'I like {n}.', "I'm at {placeAt}.", "Let's go {placeGo}.", 'Do you have {n}?', 'Can we {act} {time}?',
+          "I don't know.", "That's okay.", 'See you later.', "It's too {adj}.", "I'm on my way."
+        ],
+        shopping: [
+          'How much is this?', 'I need help.', 'One moment, please.', 'Can you repeat?'
+        ],
+        directions: [
+          'Where is the restroom?'
+        ]
+      },
+      de: {
+        greetings: [
+        'Hallo!', 'Guten Morgen.', 'Guten Abend.', 'Vielen Dank.', 'Kein Problem.',
+        ],
+        smalltalk: [
+          'Ich mag {n}.', 'Ich bin {placeAt}.', 'Lass uns {placeGo} gehen.', 'Hast du {n}?', 'Können wir {time} {act}?',
+          'Ich weiß nicht.', 'Alles gut.', 'Bis später.', 'Es ist zu {adj}.', 'Ich bin unterwegs.'
+        ],
+        shopping: [
+          'Was kostet das?', 'Ich brauche Hilfe.', 'Einen Moment, bitte.', 'Kannst du das wiederholen?'
+        ],
+        directions: [
+          'Wo ist die Toilette?'
+        ]
+      },
+      fr: {
+        greetings: [
+        'Salut !', 'Bonjour.', 'Bonsoir.', 'Merci beaucoup.', 'Pas de problème.',
+        ],
+        smalltalk: [
+          "J'aime {n}.", 'Je suis {placeAt}.', 'On va {placeGo}?', 'Tu as {n}?', 'On peut {act} {time}?',
+          "Je ne sais pas.", "C'est OK.", 'À plus tard.', "C'est trop {adj}.", "J'arrive."
+        ],
+        shopping: [
+          "C'est combien ?", "J'ai besoin d'aide.", 'Un instant, s’il vous plaît.', 'Tu peux répéter ?'
+        ],
+        directions: [
+          'Où sont les toilettes ?'
+        ]
+      }
+    };
+    const TOPICS = ['greetings','smalltalk','shopping','directions'];
+    // Build DE -> EN/FR aligned maps for placeholders
+    const deAlignedMaps = (()=>{
+      try{
+        const m = { nouns:{}, placesAt:{}, placesGo:{}, acts:{}, times:{}, adj:{} };
+        const keys = Object.keys(m);
+        for(const k of keys){
+          const arrDe = colloquialLex.de[k];
+          const arrEn = colloquialLex.en[k];
+          const arrFr = colloquialLex.fr[k];
+          for(let i=0;i<Math.min(arrDe.length, arrEn.length, arrFr.length); i++){
+            m[k][arrDe[i]] = { en: arrEn[i], fr: arrFr[i] };
+          }
+        }
+        return m;
+      }catch{ return { nouns:{}, placesAt:{}, placesGo:{}, acts:{}, times:{}, adj:{} }; }
+    })();
+    function mapLex(cat, val, tgt){ const m = deAlignedMaps[cat]?.[val]; return m? m[tgt]||val : val; }
+    function translateColloquialDE(src, tgt){
+      // Fixed phrases
+      const fixed = {
+        'Hallo!': {en:'Hi!', fr:'Salut !'},
+        'Guten Morgen.': {en:'Good morning.', fr:'Bonjour.'},
+        'Guten Abend.': {en:'Good evening.', fr:'Bonsoir.'},
+        'Vielen Dank.': {en:'Thanks a lot.', fr:'Merci beaucoup.'},
+        'Kein Problem.': {en:'No problem.', fr:'Pas de problème.'},
+        'Ich weiß nicht.': {en:"I don't know.", fr:'Je ne sais pas.'},
+        'Alles gut.': {en:"That's okay.", fr:"C'est OK."},
+        'Bis später.': {en:'See you later.', fr:'À plus tard.'},
+        'Ich bin unterwegs.': {en:"I'm on my way.", fr:"J'arrive."},
+        'Was kostet das?': {en:'How much is this?', fr:"C'est combien ?"},
+        'Ich brauche Hilfe.': {en:'I need help.', fr:"J'ai besoin d'aide."},
+        'Einen Moment, bitte.': {en:'One moment, please.', fr:'Un instant, s’il vous plaît.'},
+        'Kannst du das wiederholen?': {en:'Can you repeat?', fr:'Tu peux répéter ?'},
+        'Wo ist die Toilette?': {en:'Where is the restroom?', fr:'Où sont les toilettes ?'}
+      };
+      if(fixed[src]) return fixed[src][tgt]||src;
+      // Parameterized patterns
+      // Ich mag {n}.
+      let m = src.match(/^Ich mag (.+)\.$/);
+      if(m){ const n = m[1]; const tn = mapLex('nouns', n, tgt); return tgt==='en'? `I like ${tn}.` : `J'aime ${tn}.`; }
+      // Ich bin {placeAt}.
+      m = src.match(/^Ich bin (.+)\.$/);
+      if(m){ const p = m[1]; const tp = mapLex('placesAt', p, tgt); return tgt==='en'? `I'm at ${tp}.` : `Je suis ${tp}.`; }
+      // Lass uns {placeGo} gehen.
+      m = src.match(/^Lass uns (.+) gehen\.$/);
+      if(m){ const g = m[1]; const tg = mapLex('placesGo', g, tgt); return tgt==='en'? `Let's go ${tg}.` : `On va ${tg}?`; }
+      // Hast du {n}?
+      m = src.match(/^Hast du (.+)\?$/);
+      if(m){ const n = m[1]; const tn = mapLex('nouns', n, tgt); return tgt==='en'? `Do you have ${tn}?` : `Tu as ${tn}?`; }
+      // Können wir {time} {act}?
+      m = src.match(/^Können wir (.+) (.+)\?$/);
+      if(m){ const time=m[1], act=m[2]; const tt = mapLex('times', time, tgt); const ta = mapLex('acts', act, tgt); return tgt==='en'? `Can we ${ta} ${tt}?` : `On peut ${ta} ${tt}?`; }
+      // Es ist zu {adj}.
+      m = src.match(/^Es ist zu (.+)\.$/);
+      if(m){ const adj=m[1]; const ta = mapLex('adj', adj, tgt); return tgt==='en'? `It's too ${ta}.` : `C'est trop ${ta}.`; }
+      return null;
+    }
+    function nextTopicKey(day, pair, diff){ return `lernapp-topic-idx|${day}|${pair}|${diff}`; }
+    function getNextTopic(day, pair, diff){
+      const k = nextTopicKey(day,pair,diff); const idx = parseInt(localStorage.getItem(k)||'0',10);
+      const t = TOPICS[idx % TOPICS.length];
+      localStorage.setItem(k, String((idx+1)%TOPICS.length));
+      return t;
+    }
+    function fillTemplate(lang, topic){
+      const L = colloquialLex[lang]; const T = colloquialTemplates[lang]; if(!L||!T) return '';
+      const bank = topic && T[topic] ? T[topic] : ([]).concat(...Object.values(T));
+      const tmpl = bank[Math.floor(rand()*bank.length)];
+      return tmpl
+        .replace('{n}', L.nouns[Math.floor(rand()*L.nouns.length)])
+        .replace('{placeAt}', L.placesAt[Math.floor(rand()*L.placesAt.length)])
+        .replace('{placeGo}', L.placesGo[Math.floor(rand()*L.placesGo.length)])
+        .replace('{act}', L.acts[Math.floor(rand()*L.acts.length)])
+        .replace('{time}', L.times[Math.floor(rand()*L.times.length)])
+        .replace('{adj}', L.adj[Math.floor(rand()*L.adj.length)]);
+    }
+  async function getColloquialSentences(lang, minCount=80, topic, diff){
+      const out = new Set();
+      let guard=0;
+      let tries = 0;
+      let activeDiff = diff || 'beginner';
+      let cfg = effectiveSimpleCfg(activeDiff);
+      // Allowed topics by difficulty (beginner focuses on greetings/smalltalk)
+      const allowedTopics = activeDiff==='beginner' ? ['greetings','smalltalk'] : TOPICS;
+      function conjFor(l){ return l==='de'?'und': (l==='fr'?'et':'and'); }
+  while(out.size<minCount && guard<minCount*10){
+        guard++;
+        // Choose topic depending on difficulty
+        const useTopic = allowedTopics.includes(topic) ? topic : allowedTopics[Math.floor(rand()*allowedTopics.length)];
+        let s = fillTemplate(lang, useTopic);
+        // For native difficulty, sometimes join two clauses for more fluent, flowing sentences
+        if(activeDiff==='native' && rand()<0.35){
+          const s1 = s.replace(/[.!?]+\s*$/,'');
+          const s2raw = fillTemplate(lang, useTopic).replace(/[.!?]+\s*$/,'');
+          const conj = conjFor(lang);
+          s = `${s1}, ${conj} ${s2raw}.`;
+        }
+        if(!s) continue;
+        if(isSimpleSentence(s, activeDiff)) out.add(s);
+        // If after some attempts we still have too few, relax mins slightly
+        if(guard % (minCount*2) === 0 && out.size < Math.max(10, Math.floor(minCount/2))){
+          cfg = effectiveSimpleCfg(activeDiff);
+          cfg.minWords = Math.max(1, Math.floor(cfg.minWords*0.8));
+          cfg.minChars = Math.max(1, Math.floor(cfg.minChars*0.8));
+          // Temporarily patch a local checker with relaxed cfg
+          const oldIsSimple = isSimpleSentence;
+          const localCheck = (text)=>{
+            if(!text) return false;
+            const w = text.trim().split(/\s+/).filter(Boolean).length;
+            const simplePunct = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9\s,'’\-–—\.!\?:;]+$/.test(text);
+            const semicol = (text.match(/;/g)||[]).length;
+            const paren = (text.match(/[()]/g)||[]).length;
+            return (
+              w >= (cfg.minWords||1) && w <= (cfg.maxWords||Infinity) &&
+              text.length >= (cfg.minChars||1) && text.length <= (cfg.maxChars||Infinity) &&
+              simplePunct && semicol===0 && paren===0
+            );
+          };
+          if(localCheck(s)) out.add(s);
+        }
+      }
+      let arr = Array.from(out);
+      if(arr.length < Math.min(10, minCount/2)){
+        // Final safety: fill with raw templates ignoring filters
+        let safety=0;
+        while(arr.length < Math.min(minCount, 40) && safety < minCount*5){
+          safety++;
+          const s = fillTemplate(lang, topic);
+          if(s && !arr.includes(s)) arr.push(s);
+        }
+      }
+      return arr;
+    }
+
+    // Render Module
+  async function renderVocab(pair, onDone){
+      const diff = difficultyEl.value || 'beginner';
+      stageEl.innerHTML = '<div class="muted">Lade Wortschatz …</div>';
+    const count = VOCAB_EX_COUNT;
+      const [a,b] = pair.split('-');
+  // Prefer words not used yet today and never used in past trainings; allow only previous vocab mistakes to repeat
+  const usedPersist = new Set(getUsedList('vocab', todayKey, pair, diff));
+    const historyV = getSetLS(LS_KEYS.historyVocab);
+    const reviewVocab = getSetLS(LS_KEYS.reviewVocab);
+      // Strictly generate translatable words: NO repeats across sessions for vocab
+      let items = [];
+      // 0) Add review items first (former mistakes), but not those used today
+      const reviewQueue = Array.from(reviewVocab).filter(w=>!usedPersist.has(w)).slice(0, count);
+      for(const w of reviewQueue){ items.push({q:w, a:''}); }
+      // 1) Fill new items excluding used today and all historical items (except those in review)
+    const combinedExclude = new Set([
+      ...usedPersist,
+      ...Array.from(historyV).filter(w=>!reviewVocab.has(w)),
+      ...items.map(it=>it.q)
+    ]);
+      const need = Math.max(0, count - items.length);
+      if(need>0){
+        const fresh = await genVocabStrict(pair, need, combinedExclude, diff);
+        items.push(...fresh);
+      }
+      // Fallback fill if not enough
+      if(items.length < count){
+        const allWords = getWordPoolForDiff(a, diff);
+        const fresh = allWords.filter(w=>!combinedExclude.has(w) && !items.find(it=>it.q===w));
+        const pool = (fresh.length>=count? fresh : allWords).slice();
+        shuffle(pool);
+  for(const w of pool){ if(items.length>=count) break; if(items.find(it=>it.q===w)) continue; if(historyV.has(w) && !reviewVocab.has(w)) continue; const t = await translateWordWithFallback(a,b,w); if(t) items.push({q:w,a:t}); }
+      }
+      // Next, fill from local dictionary pairs (unused first)
+      if(items.length < count){
+  const cand = dictCandidatesForPair(a,b).filter(p=>!combinedExclude.has(p.q) && !items.find(it=>it.q===p.q));
+        shuffle(cand);
+  for(const p of cand){ if(items.length>=count) break; if(historyV.has(p.q) && !reviewVocab.has(p.q)) continue; items.push({q:p.q, a:p.a}); }
+      }
+      // Final fallback: still respect history (no repeats across sessions for vocab)
+      if(items.length < count){
+        // Respect rule: do not use historical vocab, except review (former mistakes)
+        const allWordsAny = getWordPoolForDiff(a, diff).slice();
+        shuffle(allWordsAny);
+        for(const w of allWordsAny){
+          if(items.length>=count) break;
+          if(items.find(it=>it.q===w)) continue;
+          if(historyV.has(w) && !reviewVocab.has(w)) continue;
+          const t = await translateWordWithFallback(a,b,w); if(t) items.push({q:w,a:t});
+        }
+      }
+      // If still none (very unlikely), show a soft warning
+      if(items.length===0){ stageEl.innerHTML = '<div class="muted">Keine Vokabeln gefunden. Bitte erneut starten.</div>'; return; }
+  const askedV = items.map(it=>it.q);
+  sessionVocabAsked.push(...askedV);
+  // Update global history for freshness across sessions
+  addToHistory(LS_KEYS.historyVocab, askedV);
+      stageEl.innerHTML = '';
+      const block = document.createElement('div'); block.className='task';
+  const title = document.createElement('h4'); title.textContent = `Vokabel-Übung (${items.length}) – Deutsch → Englisch & Französisch`;
+      block.appendChild(title);
+      const inputsEn = [], inputsFr = [];
+      items.forEach((it, idx)=>{
+        const row = document.createElement('div');
+        row.innerHTML = `<div class="q">${idx+1}. ${htmlEscape(it.q)}</div>`;
+        const inpEn = document.createElement('input'); inpEn.placeholder='→ Englisch'; inpEn.autocomplete='off'; inpEn.style.marginRight='8px';
+        const inpFr = document.createElement('input'); inpFr.placeholder='→ Französisch'; inpFr.autocomplete='off';
+        const rowInputs = document.createElement('div'); rowInputs.className='row'; rowInputs.style.gap='8px';
+        rowInputs.appendChild(inpEn); rowInputs.appendChild(inpFr);
+        row.appendChild(rowInputs); block.appendChild(row);
+        inputsEn.push(inpEn); inputsFr.push(inpFr);
+      });
+      const submit = document.createElement('button'); submit.textContent='Übung abgeben';
+      const result = document.createElement('div'); result.className='result hidden';
+      const nextBtn = document.createElement('button'); nextBtn.textContent='Weiter'; nextBtn.classList.add('hidden');
+  submit.addEventListener('click', async ()=>{
+        let enCorrect=0, frCorrect=0;
+        const combined = [];
+        for(let i=0;i<items.length;i++){
+          const it = items[i];
+          const valEn = (inputsEn[i].value||'').trim();
+          const valFr = (inputsFr[i].value||'').trim();
+          const expEn = String((await translateWordWithFallback(a, 'en', it.q))||'');
+          const expFr = String((await translateWordWithFallback(a, 'fr', it.q))||'');
+          const detEn = await detectLang(expEn); const detFr = await detectLang(expFr);
+          const okEn = normalizeText(valEn) === normalizeText(expEn);
+          const okFr = normalizeText(valFr) === normalizeText(expFr);
+          if(okEn) enCorrect++; if(okFr) frCorrect++;
+          combined.push({ q: it.q,
+            en: { ok: okEn, expected: expEn, got: valEn||'(leer)', langOk: detEn? detEn==='en' : true },
+            fr: { ok: okFr, expected: expFr, got: valFr||'(leer)', langOk: detFr? detFr==='fr' : true }
+          });
+        }
+        let txt = `Ergebnis: Englisch ${enCorrect}/${items.length}, Französisch ${frCorrect}/${items.length}`;
+        const korrekt = combined.filter(it=> it.en.ok && it.fr.ok);
+        const fehler = combined.filter(it=> !it.en.ok || !it.fr.ok);
+        if(korrekt.length){
+          txt += `\n\nKorrekt:`;
+          korrekt.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            txt += `\n  • ${htmlEscape(m.q)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)}\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)}`;
+          });
+        }
+        if(fehler.length){
+          txt += `\n\nFehler:`;
+          fehler.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            txt += `\n  • ${htmlEscape(m.q)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)}\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)}`;
+          });
+        }
+  result.textContent = txt; result.classList.remove('hidden');
+  // Collect errors for PDF export (only correct answers per target)
+  try{
+    for(const m of fehler){
+      const langs=[];
+      if(!m.en.ok) langs.push({tgt:'en', correct:m.en.expected});
+      if(!m.fr.ok) langs.push({tgt:'fr', correct:m.fr.expected});
+      if(langs.length) sessionErrors.push({type:'vocab', src:m.q, langs});
+    }
+  }catch{}
+  // Update review/mastered sets across sessions
+  const review = getSetLS(LS_KEYS.reviewVocab);
+  const mastered = getSetLS(LS_KEYS.masteredVocab);
+  for(const m of korrekt){ review.delete(m.q); mastered.add(m.q); }
+  for(const m of fehler){ mastered.delete(m.q); review.add(m.q); }
+  saveSetLS(LS_KEYS.reviewVocab, review);
+  saveSetLS(LS_KEYS.masteredVocab, mastered);
+        // Persist asked vocab for today for both targets to avoid reuse in test
+  addUsedList('vocab', todayKey, 'de-both', diff, items.map(it=>it.q));
+        nextBtn.classList.remove('hidden');
+      });
+      nextBtn.addEventListener('click',()=>{ modulesDone++; updateProgress(); if(typeof onDone==='function') onDone(); });
+      block.append(submit,result,nextBtn); stageEl.appendChild(block);
+    }
+
+    
+
+  async function renderTranslate(pair, onDone){
+      stageEl.innerHTML='';
+      const t = document.createElement('div'); t.className='task';
+      const diff = difficultyEl.value || 'beginner';
+      const [a,b] = pair.split('-');
+    const count = SENT_EX_COUNT;
+    const topic = getNextTopic(todayKey, 'de-both', diff);
+  let available = await getColloquialSentences(a, Math.max(120, count*8), topic, diff);
+  // Only exclude sentences already used today and across sessions; allow only previous sentence mistakes (review) to repeat
+  const used = new Set(getUsedList('sent', todayKey, 'de-both', diff));
+  const reviewSent = getSetLS(LS_KEYS.reviewSent);
+  const masteredSent = getSetLS(LS_KEYS.masteredSent);
+  const historyS = getSetLS(LS_KEYS.historySent);
+  const reviewQueue = Array.from(reviewSent).filter(s=>available.includes(s) && !used.has(s)).slice(0,count);
+  const fresh = available.filter(s=>!used.has(s) && !masteredSent.has(s) && !historyS.has(s) && !reviewQueue.includes(s));
+  let pool = reviewQueue.concat(fresh);
+  if(pool.length<count){
+    // fallback: still exclude history; allow only review (former mistakes) to repeat
+    const fallback = available.filter(s=>!pool.includes(s) && reviewSent.has(s) && !used.has(s));
+    pool = pool.concat(fallback);
+  }
+  // If still short, expand candidate generation and re-apply filters
+  let safety = 0;
+  while(pool.length < count && safety < 3){
+    safety++;
+    const more = await getColloquialSentences(a, Math.max(160, count*12*(safety+1)), topic, diff);
+    const add = more.filter(s=>!pool.includes(s) && (!historyS.has(s) || reviewSent.has(s)) && !used.has(s));
+    pool = pool.concat(add);
+  }
+      shuffle(pool);
+      const sentences = pool.slice(0,count).map(src=>({src, trans:null, _input:null}));
+      const askedS = sentences.map(s=>s.src);
+      sessionSentencesAsked.push(...askedS);
+      addToHistory(LS_KEYS.historySent, askedS);
+  const title = document.createElement('h4'); title.textContent = `Übung: Sätze übersetzen (${sentences.length}) – Deutsch → Englisch & Französisch – Thema: ${topic}`;
+      t.appendChild(title);
+      for(let i=0;i<sentences.length;i++){
+        const s = sentences[i];
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `<div class="q">${i+1}. ${htmlEscape(s.src)}</div>`;
+        const rowInputs = document.createElement('div'); rowInputs.className='row'; rowInputs.style.gap='8px';
+        const taEn = document.createElement('textarea'); taEn.rows=2; taEn.placeholder='→ Englisch';
+        const taFr = document.createElement('textarea'); taFr.rows=2; taFr.placeholder='→ Französisch';
+        s._inputEn = taEn; s._inputFr = taFr;
+        rowInputs.appendChild(taEn); rowInputs.appendChild(taFr);
+        wrap.appendChild(rowInputs); t.appendChild(wrap);
+      }
+      const micHint = document.createElement('div'); micHint.className='muted'; micHint.textContent = 'Optional: Diktieren per Mikro (Browser unterstützt dies ggf. nicht).';
+      const submit = document.createElement('button'); submit.textContent='Übung abgeben';
+      const fb = document.createElement('div'); fb.className='result hidden';
+      const nextBtn = document.createElement('button'); nextBtn.textContent='Weiter'; nextBtn.classList.add('hidden');
+  submit.addEventListener('click',async ()=>{
+        const thr = DIFFS[diff]?.thresholds || {ok:0.7, good:0.85};
+        let enCorrect=0, frCorrect=0;
+        const combined = [];
+        for(const s of sentences){
+          // EN
+          const userEn = (s._inputEn.value||'').trim();
+          let refEn = await translateText(s.src, a, 'en');
+          let detEn = await detectLang(refEn);
+          if(!refEn || (detEn && detEn!=='en')){ const fb = translateColloquialDE(s.src, 'en'); if(fb) refEn = fb; }
+          detEn = await detectLang(refEn);
+          const simEn = sentenceSimilarity(refEn, userEn); const pctEn = Math.round(simEn*100);
+          const langOkEn = detEn? detEn==='en' : true;
+          const okEn = pctEn >= Math.round((thr.ok||0.7)*100);
+          if(okEn) enCorrect++;
+          // FR
+          const userFr = (s._inputFr.value||'').trim();
+          let refFr = await translateText(s.src, a, 'fr');
+          let detFr = await detectLang(refFr);
+          if(!refFr || (detFr && detFr!=='fr')){ const fb = translateColloquialDE(s.src, 'fr'); if(fb) refFr = fb; }
+          detFr = await detectLang(refFr);
+          const simFr = sentenceSimilarity(refFr, userFr); const pctFr = Math.round(simFr*100);
+          const langOkFr = detFr? detFr==='fr' : true;
+          const okFr = pctFr >= Math.round((thr.ok||0.7)*100);
+          if(okFr) frCorrect++;
+          combined.push({ src: s.src,
+            en: { ok: okEn, expected: refEn, got: userEn||'(leer)', pct: pctEn, langOk: langOkEn },
+            fr: { ok: okFr, expected: refFr, got: userFr||'(leer)', pct: pctFr, langOk: langOkFr }
+          });
+        }
+        let txt = `Ergebnis: Englisch ${enCorrect}/${sentences.length}, Französisch ${frCorrect}/${sentences.length}`;
+        const korrekt = combined.filter(it=> it.en.ok && it.fr.ok);
+        const fehler = combined.filter(it=> !it.en.ok || !it.fr.ok);
+        if(korrekt.length){
+          txt += `\n\nKorrekt:`;
+          korrekt.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            txt += `\n  • ${htmlEscape(m.src)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)} (${m.en.pct}% ähnlich)\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)} (${m.fr.pct}% ähnlich)`;
+          });
+        }
+        if(fehler.length){
+          txt += `\n\nFehler:`;
+          fehler.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            txt += `\n  • ${htmlEscape(m.src)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)} (${m.en.pct}% ähnlich)\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)} (${m.fr.pct}% ähnlich)`;
+          });
+        }
+  fb.textContent = txt; fb.classList.remove('hidden');
+  // Collect errors for PDF export (only correct answers per language)
+  try{
+    for(const m of fehler){
+      const langs=[];
+      if(!m.en.ok) langs.push({tgt:'en', correct:m.en.expected});
+      if(!m.fr.ok) langs.push({tgt:'fr', correct:m.fr.expected});
+      if(langs.length) sessionErrors.push({type:'sent', src:m.src, langs});
+    }
+  }catch{}
+  // Update review/mastered sets for sentences
+  const review = getSetLS(LS_KEYS.reviewSent);
+  const mastered = getSetLS(LS_KEYS.masteredSent);
+  const korrektS = new Set(); const fehlerS = new Set();
+  korrekt.forEach(m=>korrektS.add(m.src));
+  fehler.forEach(m=>fehlerS.add(m.src));
+  for(const s of korrektS){ review.delete(s); mastered.add(s); }
+  for(const s of fehlerS){ mastered.delete(s); review.add(s); }
+  saveSetLS(LS_KEYS.reviewSent, review);
+  saveSetLS(LS_KEYS.masteredSent, mastered);
+        // Persist asked sentences for both targets to avoid reuse in test
+  addUsedList('sent', todayKey, 'de-both', diff, sentences.map(s=>s.src));
+        nextBtn.classList.remove('hidden');
+      });
+      nextBtn.addEventListener('click',()=>{ modulesDone++; updateProgress(); if(typeof onDone==='function') onDone(); });
+      t.append(micHint,submit,fb,nextBtn); stageEl.appendChild(t);
+    }
+
+    // Test-Generator
+    async function renderTest(pair){
+      testStageEl.innerHTML=''; testResultEl.classList.add('hidden');
+      const diff = difficultyEl.value || 'beginner';
+      const [a,b] = pair.split('-');
+      // helper to translate with fallback like genVocab
+      async function translateWithFallback(w){
+        let ans = await translateText(w, a, b);
+        if(!ans){
+          if(a==='en'&&b==='de') ans = dict[w]?.de;
+          else if(a==='en'&&b==='fr') ans = dict[w]?.fr;
+          else if(a==='de'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = k; }
+          else if(a==='fr'&&b==='en'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = k; }
+          else if(a==='fr'&&b==='de'){ const k=Object.keys(dict).find(k=>dict[k].fr===w); if(k) ans = dict[k].de; }
+          else if(a==='de'&&b==='fr'){ const k=Object.keys(dict).find(k=>dict[k].de===w); if(k) ans = dict[k].fr; }
+        }
+        return ans||null;
+      }
+      async function genVocabUnique(pair, count, excludeQs){
+        const ex = new Set(excludeQs||[]);
+        const poolAll = getWordPoolForDiff(a, diff).slice();
+        // New-only rule for vocab: do not include any historical items in test selection
+        const histV = getSetLS(LS_KEYS.historyVocab);
+        const reviewV = getSetLS(LS_KEYS.reviewVocab);
+        // Allow only review vocab (former mistakes) to repeat; everything else must be new
+        const primary = Array.from(reviewV).filter(w=>poolAll.includes(w) && !ex.has(w))
+          .concat(poolAll.filter(w=>!ex.has(w) && !histV.has(w)));
+        shuffle(primary);
+        const out=[];
+        for(const w of primary){
+          if(out.length>=count) break;
+          const ans = await translateWithFallback(w);
+          if(ans) out.push({q:w, a:ans});
+        }
+        if(out.length<count){
+          // Last resort: still respect history (no repeats) except review
+          for(const w of poolAll){ if(out.length>=count) break; if(!out.find(it=>it.q===w) && (!histV.has(w) || reviewV.has(w))){ const ans=await translateWithFallback(w); if(ans) out.push({q:w,a:ans}); } }
+        }
+        return out.slice(0,count);
+      }
+
+  // 1) Vokabel – Freitext (20, bevorzugt neu gegenüber allen heutigen Übungen)
+  const vocab = await genVocabUnique(pair, 20, sessionVocabAsked
+    .concat(getUsedList('vocab', todayKey, 'de-both', diff)));
+      const block1 = document.createElement('div'); block1.className='task';
+  block1.innerHTML = `<h4>Vokabeltest (20, Freitext) – Deutsch → Englisch & Französisch</h4>`;
+      const vocabInputsEn = [], vocabInputsFr = [];
+      vocab.forEach((it,idx)=>{
+        const row = document.createElement('div'); row.innerHTML = `<div class="q">${idx+1}. ${htmlEscape(it.q)}</div>`;
+        const rowInputs = document.createElement('div'); rowInputs.className='row'; rowInputs.style.gap='8px';
+        const inpEn = document.createElement('input'); inpEn.placeholder='→ Englisch'; inpEn.autocomplete='off'; inpEn.style.marginRight='8px';
+        const inpFr = document.createElement('input'); inpFr.placeholder='→ Französisch'; inpFr.autocomplete='off';
+        rowInputs.appendChild(inpEn); rowInputs.appendChild(inpFr);
+        row.appendChild(rowInputs); block1.appendChild(row);
+        vocabInputsEn.push(inpEn); vocabInputsFr.push(inpFr);
+      });
+
+      // 2) Sätze übersetzen (20, neu bevorzugt)
+  const topicT = getNextTopic(todayKey, 'de-both', diff);
+    const block2 = document.createElement('div'); block2.className='task'; block2.innerHTML = `<h4>Sätze übersetzen (20) – Deutsch → Englisch & Französisch – Thema: ${topicT}</h4>`;
+  const sentences = [];
+  const available = await getColloquialSentences(a, 80, topicT, diff);
+      const used = new Set(sessionSentencesAsked
+        .concat(getUsedList('sent', todayKey, 'de-both', diff)));
+      const reviewS = Array.from(getSetLS(LS_KEYS.reviewSent)).filter(s=>available.includes(s) && !used.has(s));
+      const histS = getSetLS(LS_KEYS.historySent);
+      let pool = reviewS.concat(available.filter(s=>!used.has(s) && !histS.has(s) && !reviewS.includes(s)));
+      if(pool.length<20){
+        // allow only review (former mistakes) to repeat; still exclude history otherwise
+        pool = pool.concat(available.filter(s=>!pool.includes(s) && reviewS.includes(s)));
+      }
+      shuffle(pool);
+      for(let i=0;i<20 && i<pool.length;i++){
+        const src = pool[i];
+        const s = {src};
+        sentences.push(s);
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `<div class="q">${i+1}. ${htmlEscape(s.src)}</div>`;
+        const rowInputs = document.createElement('div'); rowInputs.className='row'; rowInputs.style.gap='8px';
+        const taEn = document.createElement('textarea'); taEn.rows=2; taEn.placeholder='→ Englisch';
+        const taFr = document.createElement('textarea'); taFr.rows=2; taFr.placeholder='→ Französisch';
+        s._inputEn = taEn; s._inputFr = taFr;
+        rowInputs.appendChild(taEn); rowInputs.appendChild(taFr);
+        wrap.appendChild(rowInputs); block2.appendChild(wrap);
+      }
+
+      const submit = document.createElement('button'); submit.textContent='Test abgeben';
+  submit.addEventListener('click',async ()=>{
+        // Evaluate vocab (EN + FR)
+        const vEnMistakes=[]; const vEnCorrectList=[]; let vEnCorrect=0;
+        const vFrMistakes=[]; const vFrCorrectList=[]; let vFrCorrect=0;
+        const combinedVocab = [];
+        for(let idx=0; idx<vocab.length; idx++){
+          const it = vocab[idx];
+          // EN
+          const ansEn = (vocabInputsEn[idx].value||'').trim();
+          const expEn = String((await translateWordWithFallback(a, 'en', it.q))||'');
+          const detEn = await detectLang(expEn); const langOkEn = detEn? detEn==='en' : true;
+          const okEn = normalizeText(ansEn) === normalizeText(expEn);
+          if(okEn){ vEnCorrect++; vEnCorrectList.push({q:it.q, expected:expEn, got: ansEn||'(leer)', langOk: langOkEn}); }
+          else { vEnMistakes.push({q:it.q, expected:expEn, got: ansEn||'(leer)', langOk: langOkEn}); }
+          // FR
+          const ansFr = (vocabInputsFr[idx].value||'').trim();
+          const expFr = String((await translateWordWithFallback(a, 'fr', it.q))||'');
+          const detFr = await detectLang(expFr); const langOkFr = detFr? detFr==='fr' : true;
+          const okFr = normalizeText(ansFr) === normalizeText(expFr);
+          if(okFr){ vFrCorrect++; vFrCorrectList.push({q:it.q, expected:expFr, got: ansFr||'(leer)', langOk: langOkFr}); }
+          else { vFrMistakes.push({q:it.q, expected:expFr, got: ansFr||'(leer)', langOk: langOkFr}); }
+          combinedVocab.push({ q: it.q,
+            en: { ok: okEn, expected: expEn, got: ansEn||'(leer)', langOk: langOkEn },
+            fr: { ok: okFr, expected: expFr, got: ansFr||'(leer)', langOk: langOkFr }
+          });
+        }
+
+        // Evaluate sentences (EN + FR)
+        const sEnMistakes=[]; const sEnCorrectList=[]; let sEnCorrect=0;
+        const sFrMistakes=[]; const sFrCorrectList=[]; let sFrCorrect=0;
+        const combinedSent = [];
+        for(const s of sentences){
+          // EN
+          const userEn = (s._inputEn.value||'').trim();
+          let refEn = await translateText(s.src, a, 'en');
+          let detEn2 = await detectLang(refEn);
+          if(!refEn || (detEn2 && detEn2!=='en')){ const fb = translateColloquialDE(s.src, 'en'); if(fb) refEn = fb; }
+          detEn2 = await detectLang(refEn);
+          const simEn = sentenceSimilarity(refEn, userEn); const pctEn = Math.round(simEn*100);
+          const langOkEn2 = detEn2? detEn2==='en' : true;
+          const thr = DIFFS[diff]?.thresholds || {ok:0.7, good:0.85};
+          const okEn = pctEn >= Math.round((thr.ok||0.7)*100);
+          if(okEn){ sEnCorrect++; sEnCorrectList.push({src:s.src, expected: refEn, got: userEn||'(leer)', pct: pctEn, langOk: langOkEn2}); }
+          else sEnMistakes.push({src:s.src, expected: refEn, got: userEn||'(leer)', pct: pctEn, langOk: langOkEn2});
+          // FR
+          const userFr = (s._inputFr.value||'').trim();
+          let refFr = await translateText(s.src, a, 'fr');
+          let detFr2 = await detectLang(refFr);
+          if(!refFr || (detFr2 && detFr2!=='fr')){ const fb = translateColloquialDE(s.src, 'fr'); if(fb) refFr = fb; }
+          detFr2 = await detectLang(refFr);
+          const simFr = sentenceSimilarity(refFr, userFr); const pctFr = Math.round(simFr*100);
+          const langOkFr2 = detFr2? detFr2==='fr' : true;
+          const okFr = pctFr >= Math.round((thr.ok||0.7)*100);
+          if(okFr){ sFrCorrect++; sFrCorrectList.push({src:s.src, expected: refFr, got: userFr||'(leer)', pct: pctFr, langOk: langOkFr2}); }
+          else sFrMistakes.push({src:s.src, expected: refFr, got: userFr||'(leer)', pct: pctFr, langOk: langOkFr2});
+          combinedSent.push({ src: s.src,
+            en: { ok: okEn, expected: refEn, got: userEn||'(leer)', pct: pctEn, langOk: langOkEn2 },
+            fr: { ok: okFr, expected: refFr, got: userFr||'(leer)', pct: pctFr, langOk: langOkFr2 }
+          });
+        }
+
+        const totalQ = 2 * (vocab.length + sentences.length);
+        const totalCorrect = vEnCorrect + vFrCorrect + sEnCorrect + sFrCorrect;
+        const score = Math.round(totalCorrect / totalQ * 100);
+
+        // Build result with EN+FR stacked per item
+        let html = `Ergebnis: ${score}%\n`+
+          `Vokabeln: Englisch ${vEnCorrect}/${vocab.length}, Französisch ${vFrCorrect}/${vocab.length}\n`+
+          `Sätze: Englisch ${sEnCorrect}/${sentences.length}, Französisch ${sFrCorrect}/${sentences.length}`;
+        const vokKorrekt = combinedVocab.filter(it=> it.en.ok && it.fr.ok);
+        const vokFehler = combinedVocab.filter(it=> !it.en.ok || !it.fr.ok);
+        if(vokKorrekt.length){
+          html += `\n\nVokabeln – Korrekt:`;
+          vokKorrekt.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            html += `\n  • ${htmlEscape(m.q)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)}\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)}`;
+          });
+        }
+        if(vokFehler.length){
+          html += `\n\nVokabeln – Fehler:`;
+          vokFehler.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            html += `\n  • ${htmlEscape(m.q)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)}\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)}`;
+          });
+        }
+        const senKorrekt = combinedSent.filter(it=> it.en.ok && it.fr.ok);
+        const senFehler = combinedSent.filter(it=> !it.en.ok || !it.fr.ok);
+        if(senKorrekt.length){
+          html += `\n\nSätze – Korrekt:`;
+          senKorrekt.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            html += `\n  • ${htmlEscape(m.src)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)} (${m.en.pct}% ähnlich)\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)} (${m.fr.pct}% ähnlich)`;
+          });
+        }
+        if(senFehler.length){
+          html += `\n\nSätze – Fehler:`;
+          senFehler.forEach(m=>{
+            const noteEn = (m.en.langOk===false)? ` [Zielsprache erwartet]` : '';
+            const noteFr = (m.fr.langOk===false)? ` [Zielsprache erwartet]` : '';
+            html += `\n  • ${htmlEscape(m.src)}\n    EN – richtig: ${htmlEscape(m.en.expected)}${noteEn}\n         rp: ${htmlEscape(m.en.got)} (${m.en.pct}% ähnlich)\n    FR – richtig: ${htmlEscape(m.fr.expected)}${noteFr}\n         rp: ${htmlEscape(m.fr.got)} (${m.fr.pct}% ähnlich)`;
+          });
+        }
+        testResultEl.textContent = html;
+        testResultEl.classList.remove('hidden');
+        saveProgress(score);
+        // Persist used items so subsequent runs today avoid them
+        try{
+          addUsedList('vocab', todayKey, 'de-both', diff, vocab.map(it=>it.q));
+          addUsedList('sent', todayKey, 'de-both', diff, sentences.map(s=>s.src));
+          // Add to global history
+          addToHistory(LS_KEYS.historyVocab, vocab.map(it=>it.q));
+          addToHistory(LS_KEYS.historySent, sentences.map(s=>s.src));
+          // Update review/mastered sets based on test results
+          const reviewV = getSetLS(LS_KEYS.reviewVocab);
+          const masteredV = getSetLS(LS_KEYS.masteredVocab);
+          vEnCorrectList.concat(vFrCorrectList).forEach(m=>{ reviewV.delete(m.q); masteredV.add(m.q); });
+          vEnMistakes.concat(vFrMistakes).forEach(m=>{ masteredV.delete(m.q); reviewV.add(m.q); });
+          saveSetLS(LS_KEYS.reviewVocab, reviewV);
+          saveSetLS(LS_KEYS.masteredVocab, masteredV);
+          const reviewSe = getSetLS(LS_KEYS.reviewSent);
+          const masteredSe = getSetLS(LS_KEYS.masteredSent);
+          sEnCorrectList.concat(sFrCorrectList).forEach(m=>{ reviewSe.delete(m.src); masteredSe.add(m.src); });
+          sEnMistakes.concat(sFrMistakes).forEach(m=>{ masteredSe.delete(m.src); reviewSe.add(m.src); });
+          saveSetLS(LS_KEYS.reviewSent, reviewSe);
+          saveSetLS(LS_KEYS.masteredSent, masteredSe);
+        }catch{}
+        // Collect errors from test for export
+        try{
+          for(const m of vEnMistakes){ sessionErrors.push({type:'vocab', src:m.q, langs:[{tgt:'en', correct:m.expected}]}); }
+          for(const m of vFrMistakes){ sessionErrors.push({type:'vocab', src:m.q, langs:[{tgt:'fr', correct:m.expected}]}); }
+          for(const m of sEnMistakes){ sessionErrors.push({type:'sent', src:m.src, langs:[{tgt:'en', correct:m.expected}]}); }
+          for(const m of sFrMistakes){ sessionErrors.push({type:'sent', src:m.src, langs:[{tgt:'fr', correct:m.expected}]}); }
+        }catch{}
+        // Show export button if there are errors
+        if(Array.isArray(sessionErrors) && sessionErrors.length){ exportPdfBtn.classList.remove('hidden'); }
+      });
+
+      testStageEl.append(block1,block2,submit);
+    }
+
+    function updateProgress(){
+      const total = [mVocabEl,mTranslateEl].filter(x=>x.checked).length || 1;
+      if(progressEl){
+        progressEl.textContent = `${Math.min(modulesDone,total)}/${total} Module`;
+      }
+      if(modulesDone>=total){ testReady=true; }
+    }
+
+    function saveProgress(score){
+      const key = 'lernapp-progress';
+      const arr = JSON.parse(localStorage.getItem(key)||'[]');
+  arr.push({date: todayKey, pair: 'de-both', score});
+      localStorage.setItem(key, JSON.stringify(arr.slice(-50)));
+    }
+
+  // Kein Timer: Training endet automatisch nach letzter Übung
+
+    // Events
+    function loadSimplicityUI(){
+      const diff = difficultyEl.value || 'beginner';
+      const cfg = effectiveSimpleCfg(diff);
+      cfgMinWordsEl.value = cfg.minWords ?? '';
+      cfgMaxWordsEl.value = cfg.maxWords ?? '';
+      cfgMinCharsEl.value = cfg.minChars ?? '';
+      cfgMaxCharsEl.value = cfg.maxChars ?? '';
+    }
+    function saveSimplicityUI(){
+      const diff = difficultyEl.value || 'beginner';
+      const cfg = {
+        minWords: parseInt(cfgMinWordsEl.value||'',10),
+        maxWords: parseInt(cfgMaxWordsEl.value||'',10),
+        minChars: parseInt(cfgMinCharsEl.value||'',10),
+        maxChars: parseInt(cfgMaxCharsEl.value||'',10)
+      };
+      setSimplicityOverrides(diff, cfg);
+    }
+    difficultyEl.addEventListener('change', loadSimplicityUI);
+  cfgMinWordsEl.addEventListener('change', saveSimplicityUI);
+  cfgMaxWordsEl.addEventListener('change', saveSimplicityUI);
+  cfgMinCharsEl.addEventListener('change', saveSimplicityUI);
+  cfgMaxCharsEl.addEventListener('change', saveSimplicityUI);
+    cfgResetEl.addEventListener('click', ()=>{ setSimplicityOverrides(difficultyEl.value||'beginner', null); loadSimplicityUI(); });
+  startBtn.addEventListener('click',()=>{
+  if(started) return; started=true; modulesDone=0; testReady=false; stageEl.innerHTML='';
+  // reset current session asked lists so a new training generates fresh content
+  sessionVocabAsked = [];
+  sessionSentencesAsked = [];
+  // Clear in-place to keep global reference fresh for exporter
+  sessionErrors.length = 0;
+  try{ window.sessionErrors = sessionErrors; }catch{}
+  if(exportPdfBtn) exportPdfBtn.classList.add('hidden');
+      // persist difficulty
+      const diff = difficultyEl.value || 'beginner';
+      localStorage.setItem('lernapp-difficulty', diff);
+      // re-seed RNG based on date + diff + pair
+  const attempt = nextAttempt(todayKey, 'de-both', diff);
+  const seedStr = `${todayKey}|${diff}|de-both|try${attempt}`;
+      rand = mulberry32(strHash(seedStr));
+  // kein Timer
+  // Modularer Ablauf: Vokabeln → Sätze übersetzen (nur aktivierte)
+  const order = [];
+  if(mVocabEl.checked) order.push((next)=>renderVocab('de-en', next));
+  if(mTranslateEl.checked) order.push((next)=>renderTranslate('de-en', next));
+  let idx=0;
+  function runNext(){ if(idx<order.length){ order[idx++](runNext); } else { renderTest('de-en'); } }
+  if(order.length){ runNext(); }
+    });
+
+  // kein vorzeitiges Beenden
+
+  // restore last difficulty
+  const lastDiff = localStorage.getItem('lernapp-difficulty');
+  if(lastDiff){ difficultyEl.value = lastDiff; }
+  // Sprache ist fest: Deutsch → Englisch & Französisch; keine Auswahl nötig
+  loadSimplicityUI();
+
+  })();
+  // PDF export builder: builds a minimal printable report with only mistakes and correct target translations
+  (function(){
+  // local HTML escaper (avoid depending on app-scope helpers)
+  function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+    function dedupeErrors(list){
+      const seen = new Set(); const out=[];
+      for(const e of list||[]){
+        const byLang = Array.isArray(e.langs)? e.langs : [];
+        const uniqLangs=[];
+        for(const l of byLang){
+          const key = `${e.type}|${e.src}|${l.tgt}`;
+          if(!seen.has(key)){ seen.add(key); uniqLangs.push(l); }
+        }
+        if(uniqLangs.length) out.push({type:e.type, src:e.src, langs:uniqLangs});
+      }
+      return out;
+    }
+    function buildPrintHTML(errors){
+      const date = new Date().toISOString().slice(0,10);
+      const diff = (function(){ try{ return document.getElementById('difficulty').value || ''; }catch{return ''} })();
+      let html = '';
+      html += `<div style="font-family:system-ui, -apple-system, Segoe UI, Roboto; color:#000; padding:24px">`;
+      html += `<h2 style="margin:0 0 8px">Fehlerbericht – ${date}</h2>`;
+      html += `<div style=\"margin:0 0 16px; color:#333\">Training: Deutsch → Englisch & Französisch • Schwierigkeit: ${esc(diff)}</div>`;
+      const voc = errors.filter(e=>e.type==='vocab');
+      const sen = errors.filter(e=>e.type==='sent');
+      function section(title, arr){
+        if(!arr.length) return '';
+        let s = `<h3 style="margin:16px 0 8px">${title}</h3><ol style="margin:0; padding-left:18px">`;
+        for(const e of arr){
+          s += `<li style=\"margin:6px 0\"><div><strong>Deutsch:</strong> ${esc(e.src)}</div>`;
+          for(const l of e.langs){
+            const label = l.tgt==='en'?'Englisch':'Französisch';
+            s += `<div>${label}: ${esc(l.correct)}</div>`;
+          }
+          s += `</li>`;
+        }
+        s += `</ol>`;
+        return s;
+      }
+      html += section('Vokabeln – Fehler', voc);
+      html += section('Sätze – Fehler', sen);
+      if(!voc.length && !sen.length){ html += `<div>Keine Fehler – nichts zu exportieren.</div>`; }
+      html += `</div>`;
+      return html;
+    }
+    function doExport(){
+      try{
+        const errors = dedupeErrors(window.sessionErrors || []);
+        const area = document.getElementById('printArea');
+        if(!area) return;
+        area.innerHTML = buildPrintHTML(errors);
+        area.classList.remove('hidden');
+        window.print();
+        // Hide again after a tick
+        setTimeout(()=>{ area.classList.add('hidden'); area.innerHTML=''; }, 300);
+      }catch(e){ alert('Export fehlgeschlagen'); }
+    }
+    const btn = document.getElementById('exportPdfBtn');
+    if(btn){ btn.addEventListener('click', doExport); }
+  // sessionErrors provided by the app scope via window.sessionErrors
+  })();
+  // Hide the online link if we are already on GitHub Pages
+  (function(){
+    try{
+      const host = String(location.hostname||'');
+      if(host.endsWith('github.io')){
+        const el = document.getElementById('onlineLink');
+        if(el) el.classList.add('hidden');
+      }
+    }catch{}
+  })();
+  </script>
+</body>
+</html>
